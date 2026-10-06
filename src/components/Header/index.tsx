@@ -1,11 +1,20 @@
-import { PlusIcon } from '@phosphor-icons/react';
+import { PlusIcon, SignOutIcon } from '@phosphor-icons/react';
 import { NavLink } from 'react-router';
 import logo from '../../assets/logo.svg';
+import { useAuth } from '../../hooks/useAuth';
 import { useTransactionModal } from '../../hooks/useTransactionModal';
-import { HeaderContainer, HeaderContent, Logo, Nav, NewTransactionButton } from './styles';
+import {
+  HeaderContainer,
+  HeaderContent,
+  Logo,
+  Nav,
+  NewTransactionButton,
+  SignOutButton,
+} from './styles';
 
 export function Header() {
   const { openCreate } = useTransactionModal();
+  const auth = useAuth();
 
   return (
     <HeaderContainer>
@@ -26,6 +35,17 @@ export function Header() {
           <PlusIcon size={20} weight="bold" />
           <span>Nova transação</span>
         </NewTransactionButton>
+
+        {auth?.user && (
+          <SignOutButton
+            type="button"
+            aria-label={`Sair (${auth.user.email})`}
+            title={`Sair (${auth.user.email})`}
+            onClick={() => void auth.gateway.signOut()}
+          >
+            <SignOutIcon size={22} />
+          </SignOutButton>
+        )}
       </HeaderContent>
     </HeaderContainer>
   );

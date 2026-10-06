@@ -68,6 +68,22 @@ export const Nav = styled.nav`
   }
 `;
 
+export const SignOutButton = styled.button`
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: ${(props) => props.theme['gray-400']};
+  display: grid;
+  place-items: center;
+  transition: color 0.2s;
+
+  &:hover {
+    color: ${(props) => props.theme['gray-100']};
+  }
+`;
+
 export const NewTransactionButton = styled.button`
   height: 50px;
   border: 0;

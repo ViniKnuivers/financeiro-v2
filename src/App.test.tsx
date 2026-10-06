@@ -8,7 +8,7 @@ import { memoryStorage } from './test/memory-storage';
 async function setup(seed?: (repository: LocalTransactionsRepository) => Promise<void>) {
   const repository = new LocalTransactionsRepository(memoryStorage());
   await seed?.(repository);
-  render(<App repository={repository} />);
+  render(<App repository={repository} auth={null} />);
   return { user: userEvent.setup(), repository };
 }
 
