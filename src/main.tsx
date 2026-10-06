@@ -1,9 +1,13 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { App } from './App.tsx'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import { LocalTransactionsRepository } from './data/local-transactions-repository';
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root');
+if (!root) throw new Error('elemento #root não encontrado no index.html');
+
+createRoot(root).render(
   <StrictMode>
-    <App />
+    <App repository={new LocalTransactionsRepository()} />
   </StrictMode>,
-)
+);

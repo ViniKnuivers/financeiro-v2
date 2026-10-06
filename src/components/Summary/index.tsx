@@ -1,35 +1,39 @@
-import { ArrowCircleDown, ArrowCircleUp, CurrencyDollar } from "phosphor-react";
-import { SummaryCard, SummaryContainer } from "./styles";
+import { ArrowCircleDownIcon, ArrowCircleUpIcon, WalletIcon } from '@phosphor-icons/react';
+import { useTheme } from 'styled-components';
+import { useTransactions } from '../../hooks/useTransactions';
+import { formatCents } from '../../lib/money';
+import { SummaryCard, SummaryContainer } from './styles';
 
 export function Summary() {
-    return(
-        <SummaryContainer>
-            <SummaryCard>
-                <header>
-                    <span>Entradas</span>
-                    <ArrowCircleUp size={32} color="#00b37e" />
-                </header>
+  const { summary, status } = useTransactions();
+  const theme = useTheme();
+  const value = (cents: number) => (status === 'loading' ? '…' : formatCents(cents));
 
-                <strong>R$ 17.400,00</strong>
-            </SummaryCard>
+  return (
+    <SummaryContainer aria-label="Resumo do mês">
+      <SummaryCard>
+        <header>
+          <span>Entradas</span>
+          <ArrowCircleUpIcon size={32} color={theme['green-300']} />
+        </header>
+        <strong>{value(summary.incomeCents)}</strong>
+      </SummaryCard>
 
-        <SummaryCard>
-                <header>
-                    <span>Saidas</span>
-                    <ArrowCircleDown size={32} color="#f75a68" />
-                </header>
+      <SummaryCard>
+        <header>
+          <span>Saídas</span>
+          <ArrowCircleDownIcon size={32} color={theme['red-300']} />
+        </header>
+        <strong>{value(summary.outcomeCents)}</strong>
+      </SummaryCard>
 
-                <strong>R$ 1000,00</strong>
-            </SummaryCard>
-            <SummaryCard variant="green">
-                <header>
-                    <span>Total</span>
-                    <CurrencyDollar size={32} color="#fff" />
-                </header>
-
-                <strong>R$ 16.4000,00</strong>
-            </SummaryCard>
-            
-        </SummaryContainer>
-    )
+      <SummaryCard $variant="purple">
+        <header>
+          <span>Saldo do mês</span>
+          <WalletIcon size={32} color={theme.white} />
+        </header>
+        <strong>{value(summary.balanceCents)}</strong>
+      </SummaryCard>
+    </SummaryContainer>
+  );
 }

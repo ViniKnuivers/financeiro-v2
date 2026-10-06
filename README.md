@@ -1,75 +1,51 @@
-# React + TypeScript + Vite
+# Financeiro
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Controle simples das suas entradas e saídas, no navegador do celular ou do computador.
+Versão 2 do [bot-financeiro](https://github.com/ViniKnuivers/bot-financeiro), agora como
+site, a partir do protótipo do curso de React (DT Money).
 
-Currently, two official plugins are available:
+- **Lançamentos:** entradas e saídas com descrição, valor, categoria e data; editar e apagar
+  com um toque; busca por descrição ou categoria; navegação mês a mês.
+- **Resumo:** entradas, saídas e saldo do mês, saídas por categoria e entradas × saídas mês a
+  mês.
+- **Celular:** a lista vira cartões e os números do mês deslizam para o lado.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Rodando
 
-## React Compiler
+Requer Node.js 22+.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+| Script              | O que faz                             |
+| ------------------- | ------------------------------------- |
+| `npm run dev`       | Servidor de desenvolvimento (Vite)    |
+| `npm test`          | Testes (Vitest + Testing Library)     |
+| `npm run lint`      | ESLint com regras que checam os tipos |
+| `npm run typecheck` | TypeScript em modo estrito            |
+| `npm run format`    | Formata com Prettier                  |
+| `npm run build`     | Gera o site em `dist/`                |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Como é feito
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+React 19 + TypeScript + Vite, styled-components (tema cinza e roxo), Radix (modais),
+react-hook-form + zod (formulário), React Router e Recharts (gráficos, carregados só no
+Resumo).
 
 ```
+src/
+├── domain/      # regras puras: transação, categorias, validação, resumos
+├── data/        # onde os dados ficam (contrato + implementação no navegador)
+├── contexts/    # estado compartilhado: mês, lista, busca, criar/editar/apagar
+├── components/  # cabeçalho, cartões, seletor de mês, modais
+├── pages/       # Lançamentos e Resumo
+└── lib/         # dinheiro (sempre em centavos) e datas ("YYYY-MM-DD", sem fuso)
+```
+
+- **Dinheiro em centavos inteiros**, e o valor digitado ("1.234,56") é convertido sem passar
+  por número com vírgula.
+- **As telas não sabem onde os dados ficam:** dependem só do contrato
+  `TransactionsRepository`. Hoje os dados ficam no navegador; trocar por um banco na nuvem é
+  escrever outra implementação.

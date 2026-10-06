@@ -1,3 +1,4 @@
+/** Cinza com roxo. Verde e vermelho ficam só para entradas e saídas. */
 export const defaultTheme = {
   white: '#fff',
 
@@ -10,11 +11,16 @@ export const defaultTheme = {
   'gray-800': '#202024',
   'gray-900': '#121214',
 
+  'purple-300': '#996DFF',
+  'purple-500': '#8257E5',
+  'purple-700': '#633BBC',
+
   'green-300': '#00B37E',
   'green-500': '#00875F',
-  'green-700': '#015F43',
 
   'red-300': '#F75A68',
   'red-500': '#AB222E',
-  'red-700': '#7A1921',
-} as const
+} as const;
+
+/** Até onde o layout é de celular. */
+export const MOBILE = '@media (max-width: 640px)';
