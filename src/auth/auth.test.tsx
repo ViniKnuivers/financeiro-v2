@@ -12,6 +12,22 @@ function setup(auth = new FakeAuth()) {
 }
 
 describe('login', () => {
+  it('campos no padrão que o celular reconhece para salvar a senha', async () => {
+    setup();
+    expect(await screen.findByLabelText('E-mail')).toHaveAttribute('autocomplete', 'username');
+    expect(screen.getByLabelText('Senha')).toHaveAttribute('autocomplete', 'current-password');
+  });
+
+  it('já logado, abrir /entrar leva direto para os lançamentos (sem pedir login)', async () => {
+    const auth = new FakeAuth();
+    auth.user = { id: 'u1', email: 'vini@exemplo.com' };
+    window.history.pushState({}, '', '/entrar');
+    render(<App repository={new LocalTransactionsRepository(memoryStorage())} auth={auth} />);
+
+    expect(await screen.findByText(/Nenhuma transação em/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Senha')).not.toBeInTheDocument();
+  });
+
   it('sem entrar, vai para a página de login; entrando, vê os lançamentos e pode sair', async () => {
     const { user } = setup();
 

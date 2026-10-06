@@ -5,8 +5,9 @@ export const HeaderContainer = styled.header`
   background: ${(props) => props.theme['gray-900']};
   padding: 2.5rem 0 7.5rem;
 
+  /* Instalado no iPhone (tela cheia), desce abaixo do relógio e da bateria. */
   ${MOBILE} {
-    padding: 1.5rem 0 6.5rem;
+    padding: calc(1.5rem + env(safe-area-inset-top)) 0 6.5rem;
   }
 `;
 

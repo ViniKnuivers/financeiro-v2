@@ -11,5 +11,12 @@ export function createSupabaseClient(env: {
   const url = env.VITE_SUPABASE_URL?.trim();
   const key = env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
   if (!url || !key) return null;
-  return createClient(url, key);
+  return createClient(url, key, {
+    auth: {
+      // Continua logado ao fechar e abrir o site (a sessão fica no navegador e se renova).
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
 }

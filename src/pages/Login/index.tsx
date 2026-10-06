@@ -45,6 +45,8 @@ export function Login() {
   } = useForm<LoginForm>({ resolver: zodResolver(schema) });
 
   if (!auth) return <Navigate to="/" replace />;
+  // Ainda lendo a sessão salva: não mostra o formulário (parecia pedir login de novo).
+  if (auth.user === undefined) return <LoginContainer aria-busy="true" />;
   if (auth.user) return <Navigate to="/" replace />;
   const { gateway } = auth;
 
@@ -94,13 +96,22 @@ export function Login() {
         </header>
         <h2>{TITLES[mode]}</h2>
 
-        <form onSubmit={(event) => void handleSubmit(submit)(event)} noValidate>
+        {/* method/action e os autocomplete "username"/"current-password" são o padrão que
+            o iPhone (Chaves) e o Chrome reconhecem para oferecer "salvar senha". */}
+        <form
+          method="post"
+          action="/entrar"
+          onSubmit={(event) => void handleSubmit(submit)(event)}
+          noValidate
+        >
           <Field>
             <input
+              id="email"
               type="email"
+              inputMode="email"
               placeholder="E-mail"
               aria-label="E-mail"
-              autoComplete="email"
+              autoComplete="username"
               {...register('email')}
             />
             {errors.email && <span>{errors.email.message}</span>}
@@ -109,6 +120,7 @@ export function Login() {
           {mode !== 'reset' && (
             <Field>
               <input
+                id="password"
                 type="password"
                 placeholder="Senha"
                 aria-label="Senha"

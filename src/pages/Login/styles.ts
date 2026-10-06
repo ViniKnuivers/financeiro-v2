@@ -4,7 +4,7 @@ export const LoginContainer = styled.main`
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 1.5rem;
+  padding: calc(1.5rem + env(safe-area-inset-top)) 1.5rem 1.5rem;
   background: ${(props) => props.theme['gray-900']};
 `;
 
