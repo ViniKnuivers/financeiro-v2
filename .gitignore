@@ -1,0 +1,18 @@
+# Dependências e build
+node_modules
+dist
+dist-ssr
+*.local
+
+# Variáveis de ambiente (chaves do Supabase ficam só aqui)
+.env
+.env.*
+!.env.example
+
+# Editor e sistema
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.log
+coverage
