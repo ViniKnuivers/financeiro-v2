@@ -5,7 +5,7 @@ export interface ToastMessage {
   /** Muda a cada aviso, para o tempo recomeçar. */
   id: number;
   text: string;
-  action?: { label: string; onClick: () => void };
+  actions?: { label: string; onClick: () => void }[];
 }
 
 /** Quanto tempo o aviso fica na tela. */
@@ -26,17 +26,18 @@ export function Toast({ message, onClose }: { message: ToastMessage | null; onCl
       {message && (
         <>
           <span>{message.text}</span>
-          {message.action && (
+          {message.actions?.map((action) => (
             <button
+              key={action.label}
               type="button"
               onClick={() => {
-                message.action?.onClick();
                 onClose();
+                action.onClick();
               }}
             >
-              {message.action.label}
+              {action.label}
             </button>
-          )}
+          ))}
         </>
       )}
     </ToastBox>

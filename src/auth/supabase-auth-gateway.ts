@@ -84,6 +84,13 @@ export class SupabaseAuthGateway implements AuthGateway {
     if (error) throw toFailure(error);
   }
 
+  async deleteAccount(): Promise<void> {
+    // A função do banco apaga só quem chamou (auth.uid()); os dados vão junto (cascade).
+    const { error } = await this.client.rpc('delete_my_account');
+    if (error) throw new AuthFailure('unknown', error.message);
+    await this.client.auth.signOut({ scope: 'local' });
+  }
+
   async signOut(): Promise<void> {
     const { error } = await this.client.auth.signOut();
     if (error) throw toFailure(error);

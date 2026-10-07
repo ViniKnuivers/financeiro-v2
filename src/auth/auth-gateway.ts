@@ -43,5 +43,7 @@ export interface AuthGateway {
   onPasswordRecovery(listener: () => void): () => void;
   /** Troca a senha de quem está logado. */
   updatePassword(password: string): Promise<void>;
+  /** Exclui a conta de quem está logado e todos os dados dela, e sai. */
+  deleteAccount(): Promise<void>;
   signOut(): Promise<void>;
 }

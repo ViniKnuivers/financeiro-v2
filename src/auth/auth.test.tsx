@@ -1,13 +1,12 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '../App';
-import { LocalTransactionsRepository } from '../data/local-transactions-repository';
 import { FakeAuth } from '../test/fake-auth';
-import { memoryStorage } from '../test/memory-storage';
+import { localRepositories } from '../test/local-repositories';
 
 function setup(auth = new FakeAuth()) {
   window.history.pushState({}, '', '/');
-  render(<App repository={new LocalTransactionsRepository(memoryStorage())} auth={auth} />);
+  render(<App repositories={localRepositories()} auth={auth} />);
   return { user: userEvent.setup(), auth };
 }
 
@@ -22,7 +21,7 @@ describe('login', () => {
     const auth = new FakeAuth();
     auth.user = { id: 'u1', email: 'vini@exemplo.com' };
     window.history.pushState({}, '', '/entrar');
-    render(<App repository={new LocalTransactionsRepository(memoryStorage())} auth={auth} />);
+    render(<App repositories={localRepositories()} auth={auth} />);
 
     expect(await screen.findByText(/Nenhuma transação em/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Senha')).not.toBeInTheDocument();
@@ -91,5 +90,31 @@ describe('login', () => {
 
     expect(auth.passwordUpdates).toEqual(['nova-senha-123']);
     expect(screen.queryByLabelText('Senha nova')).not.toBeInTheDocument();
+  });
+
+  it('Minha conta: troca a senha e exclui a conta só depois de digitar EXCLUIR', async () => {
+    const auth = new FakeAuth();
+    auth.user = { id: 'u1', email: 'vini@exemplo.com' };
+    const { user } = setup(auth);
+
+    await user.click(await screen.findByRole('link', { name: 'Minha conta' }));
+    expect(await screen.findByText('vini@exemplo.com')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Senha nova'), 'curta');
+    await user.click(screen.getByRole('button', { name: 'Salvar senha' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('pelo menos 8 caracteres');
+    await user.clear(screen.getByLabelText('Senha nova'));
+    await user.type(screen.getByLabelText('Senha nova'), 'senha-nova-123');
+    await user.click(screen.getByRole('button', { name: 'Salvar senha' }));
+    expect(await screen.findByText('Senha alterada.')).toBeInTheDocument();
+    expect(auth.passwordUpdates).toEqual(['senha-nova-123']);
+
+    const remove = screen.getByRole('button', { name: 'Excluir conta' });
+    expect(remove).toBeDisabled();
+    await user.type(screen.getByLabelText('Digite EXCLUIR para confirmar'), 'EXCLUIR');
+    await user.click(remove);
+
+    expect(await screen.findByRole('heading', { name: 'Entrar' })).toBeInTheDocument();
+    expect(auth.deletedAccounts).toEqual(['vini@exemplo.com']);
   });
 });

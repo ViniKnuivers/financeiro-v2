@@ -84,3 +84,11 @@ export const Delta = styled.small<{ $tone: Tone; $onPurple?: boolean }>`
           ? props.theme['red-300']
           : props.theme['gray-400']};
 `;
+
+/** Saldo de tudo até o fim do mês (no cartão roxo). */
+export const Accumulated = styled.small`
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: ${ON_PURPLE.neutral};
+`;

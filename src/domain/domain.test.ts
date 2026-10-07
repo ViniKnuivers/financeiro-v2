@@ -115,6 +115,8 @@ describe('formulário', () => {
     amount: '150,90',
     category: 'Mercado',
     date: '2026-10-06',
+    installments: 1,
+    repeat: false,
   };
 
   it('converte o valor digitado em centavos e limpa a descrição', () => {

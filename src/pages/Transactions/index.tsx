@@ -10,6 +10,7 @@ import { Filters } from './components/Filters';
 import { SearchForm } from './components/SearchForm';
 import {
   ActionButton,
+  Badge,
   EmptyState,
   PriceHighlight,
   Toolbar,
@@ -67,7 +68,15 @@ export function Transactions() {
             <tbody>
               {visible.map((transaction) => (
                 <tr key={transaction.id}>
-                  <td className="description">{transaction.description}</td>
+                  <td className="description">
+                    {transaction.description}
+                    {transaction.installment && (
+                      <Badge title="Parcela">
+                        {transaction.installment.number}/{transaction.installment.total}
+                      </Badge>
+                    )}
+                    {transaction.recurringId && <Badge title="Gasto fixo">Fixo</Badge>}
+                  </td>
                   <td className="amount">
                     <PriceHighlight $variant={transaction.type}>
                       {transaction.type === 'outcome' && '- '}

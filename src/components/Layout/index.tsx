@@ -9,7 +9,7 @@ import { TransactionModal } from '../TransactionModal';
 
 /** Cabeçalho + página + o formulário de nova/editar transação e o aviso de "Desfazer". */
 export function Layout() {
-  const { create, update, remove, restore } = useTransactions();
+  const { create, update, remove, removeInstallments, restore } = useTransactions();
   const [formOpen, setFormOpen] = useState(false);
   // Muda a cada abertura: o formulário é montado de novo, com os valores certos.
   const [formKey, setFormKey] = useState(0);
@@ -36,18 +36,40 @@ export function Layout() {
         setFormOpen(true);
       },
       removeWithUndo: (transaction: Transaction) => {
+        const undo = (...removed: Transaction[]) => ({
+          label: 'Desfazer',
+          onClick: () => {
+            restore(...removed).catch(() => {
+              showToast({ text: 'Não foi possível desfazer. Lance de novo.' });
+            });
+          },
+        });
+        const installment = transaction.installment;
         remove(transaction.id).then(
           () => {
             showToast({
               text: `${transaction.description} apagado`,
-              action: {
-                label: 'Desfazer',
-                onClick: () => {
-                  restore(transaction).catch(() => {
-                    showToast({ text: 'Não foi possível desfazer. Lance de novo.' });
-                  });
-                },
-              },
+              actions: installment
+                ? [
+                    undo(transaction),
+                    {
+                      label: 'Apagar as outras parcelas',
+                      onClick: () => {
+                        removeInstallments(installment.group).then(
+                          (others) => {
+                            showToast({
+                              text: `${transaction.description}: todas as parcelas apagadas`,
+                              actions: [undo(transaction, ...others)],
+                            });
+                          },
+                          () => {
+                            showToast({ text: 'Não foi possível apagar as outras parcelas.' });
+                          },
+                        );
+                      },
+                    },
+                  ]
+                : [undo(transaction)],
             });
           },
           () => {
@@ -56,7 +78,7 @@ export function Layout() {
         );
       },
     }),
-    [remove, restore, showToast],
+    [remove, removeInstallments, restore, showToast],
   );
 
   return (
@@ -69,7 +91,9 @@ export function Layout() {
         open={formOpen}
         onOpenChange={setFormOpen}
         editing={editing}
-        onSubmit={(input) => (editing ? update(editing.id, input) : create(input))}
+        onSubmit={(input, options) =>
+          editing ? update(editing.id, input) : create(input, options)
+        }
       />
       <Toast message={toast} onClose={closeToast} />
     </TransactionModalContext>

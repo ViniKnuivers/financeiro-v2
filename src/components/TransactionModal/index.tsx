@@ -7,17 +7,21 @@ import {
   CATEGORIES,
   formToInput,
   MAX_DESCRIPTION,
+  MAX_INSTALLMENTS,
   transactionFormSchema,
   type Transaction,
   type TransactionForm,
   type TransactionInput,
 } from '../../domain/transaction';
+import type { CreateOptions } from '../../contexts/transactions-context';
 import { addDays, today } from '../../lib/dates';
 import { centsToInput } from '../../lib/money';
 import {
   CloseButton,
   Content,
   DateRow,
+  Hint,
+  Options,
   QuickDate,
   ErrorText,
   Field,
@@ -36,12 +40,20 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   /** Editando esta transação; sem ela, é uma nova. */
   editing: Transaction | null;
-  onSubmit: (input: TransactionInput) => Promise<void>;
+  onSubmit: (input: TransactionInput, options: CreateOptions) => Promise<void>;
 }
 
 function defaults(editing: Transaction | null): TransactionForm {
   if (!editing) {
-    return { type: 'outcome', description: '', amount: '', category: '', date: today() };
+    return {
+      type: 'outcome',
+      description: '',
+      amount: '',
+      category: '',
+      date: today(),
+      installments: 1,
+      repeat: false,
+    };
   }
   return {
     type: editing.type,
@@ -49,6 +61,8 @@ function defaults(editing: Transaction | null): TransactionForm {
     amount: centsToInput(editing.amountCents),
     category: editing.category,
     date: editing.date,
+    installments: 1,
+    repeat: false,
   };
 }
 
@@ -67,16 +81,23 @@ export function TransactionModal({ open, onOpenChange, editing, onSubmit }: Prop
   });
   const type = useWatch({ control, name: 'type' });
   const chosenDate = useWatch({ control, name: 'date' });
+  const installments = useWatch({ control, name: 'installments' });
+  const repeat = useWatch({ control, name: 'repeat' });
 
   // Trocou Entrada/Saída: a categoria escolhida pode não existir no outro tipo.
   useEffect(() => {
     if (!CATEGORIES[type].includes(getValues('category'))) setValue('category', '');
+    // Entrada não é parcelada.
+    if (type === 'income') setValue('installments', 1);
   }, [type, getValues, setValue]);
 
   async function submit(form: TransactionForm) {
     setFailed(false);
     try {
-      await onSubmit(formToInput(form));
+      await onSubmit(formToInput(form), {
+        installments: form.installments,
+        repeat: form.repeat,
+      });
       onOpenChange(false);
     } catch {
       setFailed(true);
@@ -176,6 +197,36 @@ export function TransactionModal({ open, onOpenChange, editing, onSubmit }: Prop
               </DateRow>
               {errors.date && <ErrorText>{errors.date.message}</ErrorText>}
             </Field>
+
+            {/* Só em lançamento novo: parcelar (saídas) ou repetir todo mês. */}
+            {!editing && (
+              <Options>
+                {type === 'outcome' && (
+                  <select
+                    aria-label="Parcelas"
+                    disabled={repeat}
+                    {...register('installments', { valueAsNumber: true })}
+                  >
+                    {Array.from({ length: MAX_INSTALLMENTS }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n === 1 ? 'À vista' : `${String(n)}x`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <label>
+                  <input type="checkbox" disabled={installments > 1} {...register('repeat')} />
+                  Repete todo mês
+                </label>
+              </Options>
+            )}
+            {errors.repeat && <ErrorText>{errors.repeat.message}</ErrorText>}
+            {installments > 1 && (
+              <Hint>
+                {installments} parcelas, uma por mês a partir da data. O valor é o total da compra.
+              </Hint>
+            )}
+            {repeat && <Hint>Lançado sozinho todo mês, nesse mesmo dia.</Hint>}
 
             {failed && <ErrorText role="alert">Não foi possível salvar. Tente de novo.</ErrorText>}
 

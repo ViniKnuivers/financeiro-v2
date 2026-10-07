@@ -3,16 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { App } from './App';
 import { LocalTransactionsRepository } from './data/local-transactions-repository';
 import { addDays, addMonths, formatMonthLong, today } from './lib/dates';
-import { memoryStorage } from './test/memory-storage';
+import { localRepositories } from './test/local-repositories';
 
 async function setup(seed?: (repository: LocalTransactionsRepository) => Promise<void>) {
-  const repository = new LocalTransactionsRepository(memoryStorage());
-  await seed?.(repository);
-  render(<App repository={repository} auth={null} />);
-  return { user: userEvent.setup(), repository };
+  const repositories = localRepositories();
+  await seed?.(repositories.transactions);
+  window.history.pushState({}, '', '/');
+  render(<App repositories={repositories} auth={null} />);
+  return { user: userEvent.setup(), repository: repositories.transactions, repositories };
 }
 
-const money = (text: string) => new RegExp(text.replace('R$ ', 'R\\$\\s'));
+const money = (text: string) => new RegExp(text.replace(/R\$ /g, 'R\\$\\s'));
 
 describe('Financeiro', () => {
   it('lança uma saída e uma entrada; a lista e os cartões se atualizam', async () => {
@@ -42,7 +43,11 @@ describe('Financeiro', () => {
     const summary = await screen.findByRole('region', { name: 'Resumo do mês' });
     expect(await within(summary).findByText(money('R$ 3.596,00'))).toBeInTheDocument();
     expect(within(summary).getByText(money('R$ 150,90'))).toBeInTheDocument();
-    expect(within(summary).getByText(money('R$ 3.445,10'))).toBeInTheDocument();
+    expect(
+      within(summary).getByText(money('R$ 3.445,10'), { selector: 'strong' }),
+    ).toBeInTheDocument();
+    // Primeiro mês: o acumulado é o próprio saldo.
+    expect(within(summary).getByText(money('Acumulado: R$ 3.445,10'))).toBeInTheDocument();
   });
 
   it('mostra os erros do formulário em vez de salvar', async () => {
@@ -180,5 +185,110 @@ describe('Financeiro', () => {
 
     // Saídas subiram 20%: vermelho (para saídas, subir é ruim).
     expect(await within(summary).findByText(`▲ 20% vs ${previous}`)).toBeInTheDocument();
+  });
+
+  it('compra em 3x: uma parcela por mês, com o selo 1/3, 2/3…', async () => {
+    const { user } = await setup();
+    await user.click(await screen.findByRole('button', { name: /nova transação/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Descrição'), 'Kit pc');
+    await user.type(within(dialog).getByLabelText('Valor'), '300');
+    await user.selectOptions(within(dialog).getByLabelText('Categoria'), 'Compras');
+    await user.selectOptions(within(dialog).getByLabelText('Parcelas'), '3x');
+    expect(within(dialog).getByLabelText('Repete todo mês')).toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: 'Cadastrar' }));
+
+    const [cell] = await screen.findAllByText('Kit pc', { exact: false, selector: 'td' });
+    expect(cell).toHaveTextContent('Kit pc1/3');
+    expect(cell?.closest('tr')).toHaveTextContent(money('- R$ 100,00'));
+
+    await user.click(screen.getByRole('button', { name: 'Próximo mês' }));
+    expect(await screen.findByText('2/3')).toBeInTheDocument();
+  });
+
+  it('apagar uma parcela oferece apagar as outras; Desfazer devolve todas', async () => {
+    const { user, repository } = await setup(async (repo) => {
+      const month = today().slice(0, 7);
+      await repo.createMany(
+        [1, 2, 3].map((number) => ({
+          type: 'outcome' as const,
+          description: 'Tênis',
+          category: 'Compras',
+          amountCents: 10000,
+          date: `${addMonths(month, number - 1)}-01`,
+          installment: { group: 'g1', number, total: 3 },
+        })),
+      );
+    });
+    const all = { start: '2000-01-01', end: '2100-01-01' };
+
+    await user.click(await screen.findByRole('button', { name: 'Apagar Tênis' }));
+    await user.click(await screen.findByRole('button', { name: 'Apagar as outras parcelas' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Tênis: todas as parcelas apagadas',
+    );
+    expect(await repository.list(all)).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'Desfazer' }));
+    await waitFor(async () => {
+      expect(await repository.list(all)).toHaveLength(3);
+    });
+  });
+
+  it('gasto fixo: marcado no mês passado, já aparece neste mês com o selo Fixo', async () => {
+    const { user, repositories } = await setup();
+    const lastMonth = addMonths(today().slice(0, 7), -1);
+    await user.click(await screen.findByRole('button', { name: /nova transação/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Descrição'), 'Academia');
+    await user.type(within(dialog).getByLabelText('Valor'), '65');
+    await user.selectOptions(within(dialog).getByLabelText('Categoria'), 'Saúde');
+    await user.clear(within(dialog).getByLabelText('Data'));
+    await user.type(within(dialog).getByLabelText('Data'), `${lastMonth}-01`);
+    await user.click(within(dialog).getByLabelText('Repete todo mês'));
+    await user.click(within(dialog).getByRole('button', { name: 'Cadastrar' }));
+
+    // Foi para o mês passado (a data escolhida) e já lançou este também.
+    expect(await screen.findByText('Fixo')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Próximo mês' }));
+    expect(await screen.findByText('Fixo')).toBeInTheDocument();
+    expect(await repositories.recurring.list()).toHaveLength(1);
+  });
+
+  it('Resumo: define um limite e vê a barra; lista o fixo e para de repetir', async () => {
+    const { user, repositories } = await setup(async (repo) => {
+      await repo.create({
+        type: 'outcome',
+        description: 'Cinema',
+        category: 'Lazer',
+        amountCents: 8500,
+        date: today(),
+      });
+    });
+    await repositories.recurring.create({
+      type: 'outcome',
+      description: 'Spotify',
+      category: 'Assinaturas',
+      amountCents: 2400,
+      dayOfMonth: 10,
+      startMonth: addMonths(today().slice(0, 7), 1),
+    });
+    await user.click(await screen.findByRole('link', { name: 'Resumo' }));
+
+    await user.click(await screen.findByRole('button', { name: 'Definir limites' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Limites por mês' });
+    await user.type(within(dialog).getByLabelText('Limite de Lazer'), '100');
+    await user.click(within(dialog).getByRole('button', { name: 'Salvar limites' }));
+
+    const bar = await screen.findByRole('progressbar', { name: 'Lazer' });
+    expect(bar).toHaveAttribute('aria-valuenow', '85');
+    expect(screen.getByText(money('R$ 85,00 de R$ 100,00'), { exact: false })).toBeInTheDocument();
+
+    expect(await screen.findByText('Spotify')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Parar de repetir Spotify' }));
+    await user.click(screen.getByRole('button', { name: 'Parar?' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Spotify')).not.toBeInTheDocument();
+    });
   });
 });

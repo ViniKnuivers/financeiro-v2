@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   // React + roteador + formulários + Supabase dão ~235 KB comprimidos; os gráficos ficam à parte.
-  build: { chunkSizeWarningLimit: 800 },
+  build: { chunkSizeWarningLimit: 850 },
   test: {
     environment: 'jsdom',
     globals: true,

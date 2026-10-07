@@ -1,26 +1,32 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { filterAndSort, NO_FILTERS, summarize, type ListFilters } from '../domain/summary';
-import type { Transaction, TransactionInput } from '../domain/transaction';
-import type { TransactionsRepository } from '../data/transactions-repository';
+import { recurringFrom } from '../domain/recurring';
+import { installmentPlan, type Transaction, type TransactionInput } from '../domain/transaction';
+import type { Repositories } from '../data/repositories';
 import { addMonths, monthOf, monthRange, today } from '../lib/dates';
-import { TransactionsContext, type LoadStatus } from './transactions-context';
+import { TransactionsContext, type CreateOptions, type LoadStatus } from './transactions-context';
 
 interface Loaded {
   month: string;
   version: number;
   transactions: Transaction[];
   previous: Transaction[] | null;
+  accumulated: number | null;
   failed: boolean;
 }
 
 interface Props {
-  repository: TransactionsRepository;
+  repositories: Repositories;
   children: ReactNode;
   /** Mês inicial (testes); padrão: o atual. */
   initialMonth?: string;
 }
 
-export function TransactionsProvider({ repository, children, initialMonth }: Props) {
+export function TransactionsProvider({ repositories, children, initialMonth }: Props) {
+  const repository = repositories.transactions;
+  // Os gastos fixos são lançados uma vez, ao abrir (e ao criar um fixo novo). Guarda a
+  // promessa, e não um "já fiz": duas cargas ao mesmo tempo esperam a mesma chamada.
+  const materializing = useRef<Promise<void> | null>(null);
   const [month, setMonthState] = useState(() => initialMonth ?? monthOf(today()));
   const [filters, setFiltersState] = useState<ListFilters>(NO_FILTERS);
   // Muda a cada criação/edição/exclusão, para recarregar o mês.
@@ -30,26 +36,43 @@ export function TransactionsProvider({ repository, children, initialMonth }: Pro
 
   useEffect(() => {
     let cancelled = false;
-    // O mês da tela e o anterior (para a comparação nos cartões), juntos.
-    Promise.all([
-      repository.list(monthRange(month)),
-      repository.list(monthRange(addMonths(month, -1))).catch(() => null),
-    ]).then(
-      ([list, previous]) => {
-        if (!cancelled) {
-          setLoaded({ month, version, transactions: list, previous, failed: false });
-        }
-      },
-      () => {
-        if (!cancelled) {
-          setLoaded({ month, version, transactions: [], previous: null, failed: true });
-        }
-      },
-    );
+    materializing.current ??= repositories.recurring
+      .materialize(today())
+      .catch(() => 0)
+      .then(() => undefined);
+    const prepare = materializing.current;
+    // O mês da tela, o anterior (para a comparação) e o saldo acumulado, juntos.
+    prepare
+      .then(() =>
+        Promise.all([
+          repository.list(monthRange(month)),
+          repository.list(monthRange(addMonths(month, -1))).catch(() => null),
+          repository.balanceUntil(monthRange(month).end).catch(() => null),
+        ]),
+      )
+      .then(
+        ([list, previous, accumulated]) => {
+          if (!cancelled) {
+            setLoaded({ month, version, transactions: list, previous, accumulated, failed: false });
+          }
+        },
+        () => {
+          if (!cancelled) {
+            setLoaded({
+              month,
+              version,
+              transactions: [],
+              previous: null,
+              accumulated: null,
+              failed: true,
+            });
+          }
+        },
+      );
     return () => {
       cancelled = true;
     };
-  }, [repository, month, version]);
+  }, [repository, repositories.recurring, month, version]);
 
   const current = loaded?.month === month && loaded.version === version;
   const status: LoadStatus = !current ? 'loading' : loaded.failed ? 'error' : 'ready';
@@ -69,13 +92,21 @@ export function TransactionsProvider({ repository, children, initialMonth }: Pro
   }, []);
 
   const create = useCallback(
-    async (input: TransactionInput) => {
-      await repository.create(input);
+    async (input: TransactionInput, options: CreateOptions = {}) => {
+      const installments = options.installments ?? 1;
+      if (options.repeat) {
+        await repositories.recurring.create(recurringFrom(input));
+        await repositories.recurring.materialize(today());
+      } else if (installments > 1) {
+        await repository.createMany(installmentPlan(input, installments, crypto.randomUUID()));
+      } else {
+        await repository.create(input);
+      }
       // Lançou em outro mês? Vai para ele, para a transação aparecer.
       if (monthOf(input.date) !== month) setMonth(monthOf(input.date));
       setVersion((v) => v + 1);
     },
-    [repository, month, setMonth],
+    [repository, repositories.recurring, month, setMonth],
   );
 
   const update = useCallback(
@@ -94,13 +125,26 @@ export function TransactionsProvider({ repository, children, initialMonth }: Pro
     [repository],
   );
 
+  const removeInstallments = useCallback(
+    async (group: string) => {
+      const removed = await repository.removeInstallments(group);
+      setVersion((v) => v + 1);
+      return removed;
+    },
+    [repository],
+  );
+
   const restore = useCallback(
-    async (transaction: Transaction) => {
-      await repository.restore(transaction);
+    async (...transactions: Transaction[]) => {
+      for (const transaction of transactions) await repository.restore(transaction);
       setVersion((v) => v + 1);
     },
     [repository],
   );
+
+  const refresh = useCallback(() => {
+    setVersion((v) => v + 1);
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -111,28 +155,34 @@ export function TransactionsProvider({ repository, children, initialMonth }: Pro
       summary: summarize(transactions),
       previousSummary: previous ? summarize(previous) : null,
       previousHasData: (previous?.length ?? 0) > 0,
+      accumulatedCents: sameMonth?.accumulated ?? null,
       filters,
       setFilters,
       status,
       create,
       update,
       remove,
+      removeInstallments,
       restore,
-      repository,
+      refresh,
+      repositories,
     }),
     [
       month,
       setMonth,
       transactions,
       previous,
+      sameMonth,
       filters,
       setFilters,
       status,
       create,
       update,
       remove,
+      removeInstallments,
       restore,
-      repository,
+      refresh,
+      repositories,
     ],
   );
 

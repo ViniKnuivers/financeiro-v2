@@ -1,5 +1,5 @@
-import { PlusIcon, SignOutIcon } from '@phosphor-icons/react';
-import { NavLink } from 'react-router';
+import { PlusIcon, SignOutIcon, UserCircleIcon } from '@phosphor-icons/react';
+import { Link, NavLink } from 'react-router';
 import logo from '../../assets/logo.svg';
 import { useAuth } from '../../hooks/useAuth';
 import { useTransactionModal } from '../../hooks/useTransactionModal';
@@ -36,6 +36,11 @@ export function Header() {
           <span>Nova transação</span>
         </NewTransactionButton>
 
+        {auth?.user && (
+          <SignOutButton as={Link} to="/conta" aria-label="Minha conta" title="Minha conta">
+            <UserCircleIcon size={24} />
+          </SignOutButton>
+        )}
         {auth?.user && (
           <SignOutButton
             type="button"

@@ -14,6 +14,24 @@ export function addDays(date: string, days: number): string {
   return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
+/** Último dia do mês ("2026-02" → 28). */
+export function daysInMonth(month: string): number {
+  const [year = 0, monthNumber = 1] = month.split('-').map(Number);
+  return new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+}
+
+/** Mesmo dia `count` meses depois; dia 31 em mês curto vira o último dia (31/01 + 1 = 28/02). */
+export function addMonthsToDate(date: string, count: number): string {
+  const month = addMonths(date.slice(0, 7), count);
+  const day = Math.min(Number(date.slice(8, 10)), daysInMonth(month));
+  return `${month}-${String(day).padStart(2, '0')}`;
+}
+
+/** O dia `dayOfMonth` de um mês, ou o último dia se o mês for mais curto. */
+export function dayInMonth(month: string, dayOfMonth: number): string {
+  return `${month}-${String(Math.min(dayOfMonth, daysInMonth(month))).padStart(2, '0')}`;
+}
+
 export function monthOf(date: string): string {
   return date.slice(0, 7);
 }

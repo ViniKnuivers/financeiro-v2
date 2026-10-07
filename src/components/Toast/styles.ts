@@ -15,7 +15,9 @@ export const ToastBox = styled.div<{ $visible: boolean }>`
   max-width: calc(100vw - 2rem);
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
   padding: 0.875rem 1.25rem;
   border-radius: 8px;
   background: ${(props) => props.theme['gray-600']};
@@ -27,6 +29,7 @@ export const ToastBox = styled.div<{ $visible: boolean }>`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
   }
 
   button {

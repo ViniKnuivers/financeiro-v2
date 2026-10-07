@@ -23,6 +23,8 @@ import {
 import { useTransactions } from '../../hooks/useTransactions';
 import { addMonths, formatMonthLong, formatMonthShort, monthRange } from '../../lib/dates';
 import { formatCents } from '../../lib/money';
+import { BudgetPanel } from './components/BudgetPanel';
+import { RecurringPanel } from './components/RecurringPanel';
 import { CategoryList, ChartCard, ChartsGrid, OverviewContainer, Toolbar } from './styles';
 
 /** Meses no gráfico de entradas × saídas. */
@@ -43,7 +45,8 @@ const CATEGORY_COLORS = [
 ];
 
 export function Overview() {
-  const { month, transactions, repository } = useTransactions();
+  const { month, transactions, repositories } = useTransactions();
+  const repository = repositories.transactions;
   const theme = useTheme();
   const [history, setHistory] = useState<MonthTotals[]>([]);
 
@@ -165,6 +168,15 @@ export function Overview() {
                 />
               </BarChart>
             </ResponsiveContainer>
+          </ChartCard>
+        </ChartsGrid>
+
+        <ChartsGrid>
+          <ChartCard>
+            <BudgetPanel />
+          </ChartCard>
+          <ChartCard>
+            <RecurringPanel />
           </ChartCard>
         </ChartsGrid>
       </OverviewContainer>

@@ -7,30 +7,31 @@ import { RequireAuth } from './auth/RequireAuth';
 import { Layout } from './components/Layout';
 import { NewPasswordDialog } from './components/NewPasswordDialog';
 import { TransactionsProvider } from './contexts/TransactionsProvider';
-import type { TransactionsRepository } from './data/transactions-repository';
+import type { Repositories } from './data/repositories';
 import { useAuth } from './hooks/useAuth';
+import { Account } from './pages/Account';
 import { Login } from './pages/Login';
 import { Transactions } from './pages/Transactions';
 import { GlobalStyle } from './styles/global';
 import { defaultTheme } from './styles/themes/default';
 
 interface Props {
-  repository: TransactionsRepository;
+  repositories: Repositories;
   /** Login (Supabase); null roda só no navegador, sem login. */
   auth: AuthGateway | null;
 }
 
 /** Os dados de quem está logado: trocou de conta, recarrega do zero. */
-function UserData({ repository }: { repository: TransactionsRepository }) {
+function UserData({ repositories }: { repositories: Repositories }) {
   const auth = useAuth();
   return (
-    <TransactionsProvider key={auth?.user?.id ?? 'local'} repository={repository}>
+    <TransactionsProvider key={auth?.user?.id ?? 'local'} repositories={repositories}>
       <Layout />
     </TransactionsProvider>
   );
 }
 
-export function App({ repository, auth }: Props) {
+export function App({ repositories, auth }: Props) {
   const router = useMemo(
     () =>
       createBrowserRouter([
@@ -38,7 +39,7 @@ export function App({ repository, auth }: Props) {
         {
           element: (
             <RequireAuth>
-              <UserData repository={repository} />
+              <UserData repositories={repositories} />
             </RequireAuth>
           ),
           children: [
@@ -48,11 +49,12 @@ export function App({ repository, auth }: Props) {
               path: 'resumo',
               lazy: async () => ({ Component: (await import('./pages/Overview')).Overview }),
             },
+            { path: 'conta', element: <Account /> },
             { path: '*', element: <Navigate to="/" replace /> },
           ],
         },
       ]),
-    [repository],
+    [repositories],
   );
 
   const app = <RouterProvider router={router} />;

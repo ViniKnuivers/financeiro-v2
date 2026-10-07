@@ -165,3 +165,16 @@ export const EmptyState = styled.div`
     }
   }
 `;
+
+/** "2/3" nas parcelas e "Fixo" nos gastos fixos, ao lado da descrição. */
+export const Badge = styled.span`
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  vertical-align: 0.0625rem;
+  background: ${(props) => props.theme['gray-600']};
+  color: ${(props) => props.theme['purple-300']};
+`;

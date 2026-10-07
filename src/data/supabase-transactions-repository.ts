@@ -11,9 +11,15 @@ export interface TransactionRow {
   amount_cents: number;
   date: string;
   created_at: string;
+  installment_group: string | null;
+  installment_number: number | null;
+  installment_total: number | null;
+  recurring_id: string | null;
 }
 
-const COLUMNS = 'id, type, description, category, amount_cents, date, created_at';
+const COLUMNS =
+  'id, type, description, category, amount_cents, date, created_at, ' +
+  'installment_group, installment_number, installment_total, recurring_id';
 
 export function fromRow(row: TransactionRow): Transaction {
   return {
@@ -24,9 +30,19 @@ export function fromRow(row: TransactionRow): Transaction {
     amountCents: row.amount_cents,
     date: row.date,
     createdAt: row.created_at,
+    installment:
+      row.installment_group && row.installment_number && row.installment_total
+        ? {
+            group: row.installment_group,
+            number: row.installment_number,
+            total: row.installment_total,
+          }
+        : null,
+    recurringId: row.recurring_id,
   };
 }
 
+/** Os campos que o formulário edita (parcela e fixo não mudam na edição). */
 export function toRow(input: TransactionInput) {
   return {
     type: input.type,
@@ -34,6 +50,17 @@ export function toRow(input: TransactionInput) {
     category: input.category,
     amount_cents: input.amountCents,
     date: input.date,
+  };
+}
+
+/** Linha completa para criar ou devolver (inclui parcela e fixo). */
+export function toNewRow(input: TransactionInput) {
+  return {
+    ...toRow(input),
+    installment_group: input.installment?.group ?? null,
+    installment_number: input.installment?.number ?? null,
+    installment_total: input.installment?.total ?? null,
+    recurring_id: input.recurringId ?? null,
   };
 }
 
@@ -64,7 +91,7 @@ export class SupabaseTransactionsRepository implements TransactionsRepository {
   async create(input: TransactionInput): Promise<Transaction> {
     const { data, error } = await this.client
       .from('transactions')
-      .insert(toRow(input))
+      .insert(toNewRow(input))
       .select(COLUMNS)
       .single<TransactionRow>();
     if (error) throw new Error(`Supabase: ${error.message}`);
@@ -84,11 +111,39 @@ export class SupabaseTransactionsRepository implements TransactionsRepository {
 
   async restore(transaction: Transaction): Promise<void> {
     const { error } = await this.client.from('transactions').insert({
-      ...toRow(transaction),
+      ...toNewRow(transaction),
       id: transaction.id,
       created_at: transaction.createdAt,
     });
     if (error) throw new Error(`Supabase: ${error.message}`);
+  }
+
+  async createMany(inputs: TransactionInput[]): Promise<Transaction[]> {
+    const { data, error } = await this.client
+      .from('transactions')
+      .insert(inputs.map(toNewRow))
+      .select(COLUMNS)
+      .overrideTypes<TransactionRow[], { merge: false }>();
+    if (error) throw new Error(`Supabase: ${error.message}`);
+    return data.map(fromRow);
+  }
+
+  async removeInstallments(group: string): Promise<Transaction[]> {
+    const { data, error } = await this.client
+      .from('transactions')
+      .delete()
+      .eq('installment_group', group)
+      .select(COLUMNS)
+      .overrideTypes<TransactionRow[], { merge: false }>();
+    if (error) throw new Error(`Supabase: ${error.message}`);
+    return data.map(fromRow);
+  }
+
+  async balanceUntil(end: string): Promise<number> {
+    const result = await this.client.rpc('balance_until', { end_date: end });
+    if (result.error) throw new Error(`Supabase: ${result.error.message}`);
+    // bigint chega como número (ou texto, em valores muito grandes).
+    return Number(result.data as unknown);
   }
 
   async remove(id: string): Promise<void> {

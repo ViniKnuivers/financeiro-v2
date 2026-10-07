@@ -55,6 +55,31 @@ export class LocalTransactionsRepository implements TransactionsRepository {
     return Promise.resolve();
   }
 
+  createMany(inputs: TransactionInput[]): Promise<Transaction[]> {
+    const created = inputs.map((input): Transaction => ({
+      ...input,
+      id: this.newId(),
+      createdAt: this.now().toISOString(),
+    }));
+    this.write([...this.read(), ...created]);
+    return Promise.resolve(created);
+  }
+
+  removeInstallments(group: string): Promise<Transaction[]> {
+    const all = this.read();
+    const removed = all.filter((t) => t.installment?.group === group);
+    this.write(all.filter((t) => t.installment?.group !== group));
+    return Promise.resolve(removed);
+  }
+
+  balanceUntil(end: string): Promise<number> {
+    return Promise.resolve(
+      this.read()
+        .filter((t) => t.date < end)
+        .reduce((sum, t) => sum + (t.type === 'income' ? t.amountCents : -t.amountCents), 0),
+    );
+  }
+
   restore(transaction: Transaction): Promise<void> {
     const all = this.read();
     if (!all.some((t) => t.id === transaction.id)) this.write([...all, transaction]);

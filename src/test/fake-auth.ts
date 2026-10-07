@@ -52,6 +52,14 @@ export class FakeAuth implements AuthGateway {
     return Promise.resolve();
   }
 
+  deletedAccounts: string[] = [];
+
+  deleteAccount() {
+    if (this.user) this.deletedAccounts.push(this.user.email);
+    this.set(null);
+    return Promise.resolve();
+  }
+
   signOut() {
     this.set(null);
     return Promise.resolve();

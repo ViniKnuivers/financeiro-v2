@@ -4,12 +4,13 @@ import { changeFrom, type Summary as MonthSummary } from '../../domain/summary';
 import { useTransactions } from '../../hooks/useTransactions';
 import { addMonths, formatMonthLong } from '../../lib/dates';
 import { formatCents } from '../../lib/money';
-import { Delta, SummaryCard, SummaryContainer } from './styles';
+import { Accumulated, Delta, SummaryCard, SummaryContainer } from './styles';
 
 type Key = keyof MonthSummary;
 
 export function Summary() {
-  const { summary, previousSummary, previousHasData, status, month } = useTransactions();
+  const { summary, previousSummary, previousHasData, accumulatedCents, status, month } =
+    useTransactions();
   const theme = useTheme();
   const loading = status === 'loading';
   const value = (cents: number) => (loading ? '…' : formatCents(cents));
@@ -65,6 +66,9 @@ export function Summary() {
         </header>
         <strong>{value(summary.balanceCents)}</strong>
         {delta('balanceCents', true, true)}
+        {!loading && accumulatedCents !== null && (
+          <Accumulated>Acumulado: {formatCents(accumulatedCents)}</Accumulated>
+        )}
       </SummaryCard>
     </SummaryContainer>
   );

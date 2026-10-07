@@ -163,3 +163,44 @@ export const QuickDate = styled.button`
     color: ${(props) => props.theme.white};
   }
 `;
+
+export const Options = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  select {
+    border: 0;
+    border-radius: 6px;
+    background: ${(props) => props.theme['gray-900']};
+    color: ${(props) => props.theme['gray-300']};
+    padding: 0.75rem 1rem;
+    color-scheme: dark;
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: ${(props) => props.theme['gray-300']};
+    cursor: pointer;
+
+    input {
+      width: 18px;
+      height: 18px;
+      accent-color: ${(props) => props.theme['purple-500']};
+    }
+
+    &:has(input:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+`;
+
+export const Hint = styled.p`
+  font-size: 0.875rem;
+  color: ${(props) => props.theme['gray-400']};
+  line-height: 1.4;
+`;

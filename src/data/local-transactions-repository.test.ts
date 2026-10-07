@@ -52,4 +52,22 @@ describe('LocalTransactionsRepository', () => {
     await expect(repo.update('nada', input)).rejects.toBeInstanceOf(TransactionNotFoundError);
     expect(await repo.list({ start: '2000-01-01', end: '2100-01-01' })).toEqual([]);
   });
+
+  it('parcelas: cria todas de uma vez e apaga o grupo inteiro; saldo acumulado', async () => {
+    const repo = setup();
+    const installment = (number: number) => ({ group: 'g1', number, total: 2 });
+    await repo.create({ ...input, type: 'income', amountCents: 100000, date: '2026-09-05' });
+    await repo.createMany([
+      { ...input, amountCents: 5000, date: '2026-09-10', installment: installment(1) },
+      { ...input, amountCents: 5000, date: '2026-10-10', installment: installment(2) },
+    ]);
+
+    // Até o fim de setembro: 1.000 − 50 = 950; até o fim de outubro: 900.
+    expect(await repo.balanceUntil('2026-10-01')).toBe(95000);
+    expect(await repo.balanceUntil('2026-11-01')).toBe(90000);
+
+    const removed = await repo.removeInstallments('g1');
+    expect(removed.map((t) => t.installment?.number)).toEqual([1, 2]);
+    expect(await repo.balanceUntil('2026-11-01')).toBe(100000);
+  });
 });
