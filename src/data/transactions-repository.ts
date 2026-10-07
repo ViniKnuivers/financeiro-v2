@@ -15,6 +15,8 @@ export interface TransactionsRepository {
   create(input: TransactionInput): Promise<Transaction>;
   update(id: string, input: TransactionInput): Promise<Transaction>;
   remove(id: string): Promise<void>;
+  /** Devolve uma transação apagada, com o mesmo id e dados (botão Desfazer). */
+  restore(transaction: Transaction): Promise<void>;
 }
 
 export class TransactionNotFoundError extends Error {

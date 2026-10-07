@@ -33,8 +33,15 @@ describe('LocalTransactionsRepository', () => {
     await repo.update('id-1', { ...input, amountCents: 4000 });
     expect((await repo.list(october)).find((t) => t.id === 'id-1')?.amountCents).toBe(4000);
 
+    const [uber] = (await repo.list(october)).filter((t) => t.id === 'id-2');
     await repo.remove('id-2');
     expect((await repo.list(october)).map((t) => t.description)).toEqual(['Almoço']);
+
+    // Desfazer: volta igual, com o mesmo id (e não duplica se chamado duas vezes).
+    if (!uber) throw new Error('faltou a transação');
+    await repo.restore(uber);
+    await repo.restore(uber);
+    expect((await repo.list(october)).map((t) => t.id)).toEqual(['id-2', 'id-1']);
   });
 
   it('editar o que não existe é erro; dados corrompidos viram lista vazia', async () => {

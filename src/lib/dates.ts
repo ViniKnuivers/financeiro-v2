@@ -9,6 +9,11 @@ export function today(now: Date = new Date()): string {
   return local.toISOString().slice(0, 10);
 }
 
+export function addDays(date: string, days: number): string {
+  const [year = 0, month = 1, day = 1] = date.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
 export function monthOf(date: string): string {
   return date.slice(0, 7);
 }

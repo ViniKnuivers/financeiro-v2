@@ -1,5 +1,5 @@
 import { addMonths, monthOf } from '../lib/dates';
-import type { Transaction } from './transaction';
+import { byNewest, type Transaction, type TransactionType } from './transaction';
 
 export interface Summary {
   incomeCents: number;
@@ -80,4 +80,61 @@ export function matchesSearch(transaction: Transaction, query: string): boolean 
     normalize(transaction.description).includes(target) ||
     normalize(transaction.category).includes(target)
   );
+}
+
+export interface ListFilters {
+  query: string;
+  type: 'all' | TransactionType;
+  /** '' = todas. */
+  category: string;
+  sort: 'date' | 'amount';
+}
+
+export const NO_FILTERS: ListFilters = { query: '', type: 'all', category: '', sort: 'date' };
+
+export function hasFilters(filters: ListFilters): boolean {
+  return (
+    filters.query.trim() !== '' ||
+    filters.type !== NO_FILTERS.type ||
+    filters.category !== NO_FILTERS.category ||
+    filters.sort !== NO_FILTERS.sort
+  );
+}
+
+/** Busca + tipo + categoria, em ordem de data (mais recentes) ou de valor (maiores). */
+export function filterAndSort(
+  transactions: readonly Transaction[],
+  filters: ListFilters,
+): Transaction[] {
+  const list = transactions.filter(
+    (t) =>
+      matchesSearch(t, filters.query) &&
+      (filters.type === 'all' || t.type === filters.type) &&
+      (filters.category === '' || t.category === filters.category),
+  );
+  return filters.sort === 'amount'
+    ? list.sort((a, b) => b.amountCents - a.amountCents || byNewest(a, b))
+    : list.sort(byNewest);
+}
+
+/** Categorias que aparecem no mês, em ordem alfabética (para o filtro). */
+export function categoriesIn(transactions: readonly Transaction[]): string[] {
+  return [...new Set(transactions.map((t) => t.category))].sort((a, b) =>
+    a.localeCompare(b, 'pt-BR'),
+  );
+}
+
+export type Change =
+  | { kind: 'up' | 'down'; percent: number }
+  | { kind: 'same' }
+  /** O mês anterior não tinha nada para comparar. */
+  | { kind: 'new' };
+
+/** Variação em relação ao mês anterior (funciona com saldo negativo também). */
+export function changeFrom(previous: number, current: number): Change {
+  if (current === previous) return { kind: 'same' };
+  if (previous === 0) return { kind: 'new' };
+  const percent = Math.round((Math.abs(current - previous) / Math.abs(previous)) * 100);
+  if (percent === 0) return { kind: 'same' };
+  return { kind: current > previous ? 'up' : 'down', percent };
 }

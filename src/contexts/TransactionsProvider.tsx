@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { matchesSearch, summarize } from '../domain/summary';
+import { filterAndSort, NO_FILTERS, summarize, type ListFilters } from '../domain/summary';
 import type { Transaction, TransactionInput } from '../domain/transaction';
 import type { TransactionsRepository } from '../data/transactions-repository';
-import { monthOf, monthRange, today } from '../lib/dates';
+import { addMonths, monthOf, monthRange, today } from '../lib/dates';
 import { TransactionsContext, type LoadStatus } from './transactions-context';
 
 interface Loaded {
   month: string;
   version: number;
   transactions: Transaction[];
+  previous: Transaction[] | null;
   failed: boolean;
 }
 
@@ -20,8 +21,8 @@ interface Props {
 }
 
 export function TransactionsProvider({ repository, children, initialMonth }: Props) {
-  const [month, setMonth] = useState(() => initialMonth ?? monthOf(today()));
-  const [query, setQuery] = useState('');
+  const [month, setMonthState] = useState(() => initialMonth ?? monthOf(today()));
+  const [filters, setFiltersState] = useState<ListFilters>(NO_FILTERS);
   // Muda a cada criação/edição/exclusão, para recarregar o mês.
   const [version, setVersion] = useState(0);
   // O último resultado carregado e de qual pedido (mês + versão) ele é.
@@ -29,12 +30,20 @@ export function TransactionsProvider({ repository, children, initialMonth }: Pro
 
   useEffect(() => {
     let cancelled = false;
-    repository.list(monthRange(month)).then(
-      (list) => {
-        if (!cancelled) setLoaded({ month, version, transactions: list, failed: false });
+    // O mês da tela e o anterior (para a comparação nos cartões), juntos.
+    Promise.all([
+      repository.list(monthRange(month)),
+      repository.list(monthRange(addMonths(month, -1))).catch(() => null),
+    ]).then(
+      ([list, previous]) => {
+        if (!cancelled) {
+          setLoaded({ month, version, transactions: list, previous, failed: false });
+        }
       },
       () => {
-        if (!cancelled) setLoaded({ month, version, transactions: [], failed: true });
+        if (!cancelled) {
+          setLoaded({ month, version, transactions: [], previous: null, failed: true });
+        }
       },
     );
     return () => {
@@ -45,19 +54,28 @@ export function TransactionsProvider({ repository, children, initialMonth }: Pro
   const current = loaded?.month === month && loaded.version === version;
   const status: LoadStatus = !current ? 'loading' : loaded.failed ? 'error' : 'ready';
   // Recarregando o mesmo mês (depois de lançar algo), mostra a lista anterior até chegar a nova.
-  const transactions = useMemo(
-    () => (loaded?.month === month ? loaded.transactions : []),
-    [loaded, month],
-  );
+  const sameMonth = loaded?.month === month ? loaded : null;
+  const transactions = useMemo(() => sameMonth?.transactions ?? [], [sameMonth]);
+  const previous = sameMonth?.previous ?? null;
+
+  // Trocou de mês: a categoria escolhida pode nem existir no outro; o resto continua.
+  const setMonth = useCallback((next: string) => {
+    setMonthState(next);
+    setFiltersState((f) => ({ ...f, category: '' }));
+  }, []);
+
+  const setFilters = useCallback((change: Partial<ListFilters>) => {
+    setFiltersState((f) => ({ ...f, ...change }));
+  }, []);
 
   const create = useCallback(
     async (input: TransactionInput) => {
       await repository.create(input);
       // Lançou em outro mês? Vai para ele, para a transação aparecer.
-      setMonth(monthOf(input.date));
+      if (monthOf(input.date) !== month) setMonth(monthOf(input.date));
       setVersion((v) => v + 1);
     },
-    [repository],
+    [repository, month, setMonth],
   );
 
   const update = useCallback(
@@ -76,22 +94,46 @@ export function TransactionsProvider({ repository, children, initialMonth }: Pro
     [repository],
   );
 
+  const restore = useCallback(
+    async (transaction: Transaction) => {
+      await repository.restore(transaction);
+      setVersion((v) => v + 1);
+    },
+    [repository],
+  );
+
   const value = useMemo(
     () => ({
       month,
       setMonth,
       transactions,
-      visible: transactions.filter((t) => matchesSearch(t, query)),
+      visible: filterAndSort(transactions, filters),
       summary: summarize(transactions),
-      query,
-      setQuery,
+      previousSummary: previous ? summarize(previous) : null,
+      previousHasData: (previous?.length ?? 0) > 0,
+      filters,
+      setFilters,
       status,
       create,
       update,
       remove,
+      restore,
       repository,
     }),
-    [month, transactions, query, status, create, update, remove, repository],
+    [
+      month,
+      setMonth,
+      transactions,
+      previous,
+      filters,
+      setFilters,
+      status,
+      create,
+      update,
+      remove,
+      restore,
+      repository,
+    ],
   );
 
   return <TransactionsContext value={value}>{children}</TransactionsContext>;

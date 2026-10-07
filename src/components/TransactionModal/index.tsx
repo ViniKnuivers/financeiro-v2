@@ -12,11 +12,13 @@ import {
   type TransactionForm,
   type TransactionInput,
 } from '../../domain/transaction';
-import { today } from '../../lib/dates';
+import { addDays, today } from '../../lib/dates';
 import { centsToInput } from '../../lib/money';
 import {
   CloseButton,
   Content,
+  DateRow,
+  QuickDate,
   ErrorText,
   Field,
   Overlay,
@@ -64,6 +66,7 @@ export function TransactionModal({ open, onOpenChange, editing, onSubmit }: Prop
     defaultValues: defaults(editing),
   });
   const type = useWatch({ control, name: 'type' });
+  const chosenDate = useWatch({ control, name: 'date' });
 
   // Trocou Entrada/Saída: a categoria escolhida pode não existir no outro tipo.
   useEffect(() => {
@@ -151,7 +154,26 @@ export function TransactionModal({ open, onOpenChange, editing, onSubmit }: Prop
             </Field>
 
             <Field>
-              <input type="date" aria-label="Data" {...register('date')} />
+              <DateRow>
+                <input type="date" aria-label="Data" {...register('date')} />
+                {(
+                  [
+                    ['Hoje', today()],
+                    ['Ontem', addDays(today(), -1)],
+                  ] as const
+                ).map(([label, date]) => (
+                  <QuickDate
+                    key={label}
+                    type="button"
+                    aria-pressed={date === chosenDate}
+                    onClick={() => {
+                      setValue('date', date, { shouldValidate: true });
+                    }}
+                  >
+                    {label}
+                  </QuickDate>
+                ))}
+              </DateRow>
               {errors.date && <ErrorText>{errors.date.message}</ErrorText>}
             </Field>
 

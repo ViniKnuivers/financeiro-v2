@@ -1,6 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import styled from 'styled-components';
 
+/** Janela pequena (senha nova, gastos fixos, limites): fundo escuro e caixa centralizada. */
+
 export const Overlay = styled(Dialog.Overlay)`
   position: fixed;
   inset: 0;

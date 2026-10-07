@@ -82,6 +82,15 @@ export class SupabaseTransactionsRepository implements TransactionsRepository {
     return fromRow(data);
   }
 
+  async restore(transaction: Transaction): Promise<void> {
+    const { error } = await this.client.from('transactions').insert({
+      ...toRow(transaction),
+      id: transaction.id,
+      created_at: transaction.createdAt,
+    });
+    if (error) throw new Error(`Supabase: ${error.message}`);
+  }
+
   async remove(id: string): Promise<void> {
     const { error } = await this.client.from('transactions').delete().eq('id', id);
     if (error) throw new Error(`Supabase: ${error.message}`);

@@ -1,8 +1,8 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
 import { LocalTransactionsRepository } from './data/local-transactions-repository';
-import { today } from './lib/dates';
+import { addDays, addMonths, formatMonthLong, today } from './lib/dates';
 import { memoryStorage } from './test/memory-storage';
 
 async function setup(seed?: (repository: LocalTransactionsRepository) => Promise<void>) {
@@ -92,11 +92,93 @@ describe('Financeiro', () => {
     expect(screen.getByText('Uber', { selector: 'td' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Limpar busca' }));
 
-    // Apagar, com confirmação.
+    // Apagar: some na hora e o aviso oferece "Desfazer", que traz de volta.
     await user.click(screen.getByRole('button', { name: 'Apagar Uber' }));
-    const confirm = await screen.findByRole('dialog', { name: 'Apagar transação?' });
-    await user.click(within(confirm).getByRole('button', { name: 'Apagar' }));
-    await screen.findByText('Almoço', { selector: 'td' });
-    expect(screen.queryByText('Uber', { selector: 'td' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveTextContent('Uber apagado');
+    await waitFor(() => {
+      expect(screen.queryByText('Uber', { selector: 'td' })).not.toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: 'Desfazer' }));
+    expect(await screen.findByText('Uber', { selector: 'td' })).toBeInTheDocument();
+  });
+
+  it('filtra por tipo e categoria, ordena por valor e limpa os filtros', async () => {
+    const date = today();
+    const { user } = await setup(async (repository) => {
+      const base = { type: 'outcome' as const, date };
+      await repository.create({
+        ...base,
+        description: 'Almoço',
+        category: 'Alimentação',
+        amountCents: 3200,
+      });
+      await repository.create({
+        ...base,
+        description: 'Mercado',
+        category: 'Mercado',
+        amountCents: 15000,
+      });
+      await repository.create({
+        ...base,
+        description: 'Uber',
+        category: 'Transporte',
+        amountCents: 1800,
+      });
+      await repository.create({
+        ...base,
+        type: 'income',
+        description: 'Salário',
+        category: 'Salário',
+        amountCents: 359600,
+      });
+    });
+    const descriptions = () =>
+      [...document.querySelectorAll('td.description')].map((cell) => cell.textContent);
+    await screen.findAllByText('Salário', { selector: 'td' });
+
+    await user.click(screen.getByRole('button', { name: 'Saídas' }));
+    expect(descriptions()).not.toContain('Salário');
+
+    await user.selectOptions(screen.getByLabelText('Ordem'), 'Maior valor');
+    expect(descriptions()).toEqual(['Mercado', 'Almoço', 'Uber']);
+
+    await user.selectOptions(screen.getByLabelText('Categoria'), 'Transporte');
+    expect(descriptions()).toEqual(['Uber']);
+
+    await user.click(screen.getByRole('button', { name: 'Entradas' }));
+    expect(await screen.findByText(/Nenhuma transação com esses filtros/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Limpar filtros' }));
+    expect(descriptions()).toHaveLength(4);
+  });
+
+  it('"Ontem" preenche a data de ontem', async () => {
+    const { user } = await setup();
+    await user.click(await screen.findByRole('button', { name: /nova transação/i }));
+    const dialog = await screen.findByRole('dialog');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Ontem' }));
+    expect(within(dialog).getByLabelText('Data')).toHaveValue(addDays(today(), -1));
+    expect(within(dialog).getByRole('button', { name: 'Ontem' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('compara com o mês anterior nos cartões', async () => {
+    const thisMonth = today().slice(0, 7);
+    await setup(async (repository) => {
+      const base = { type: 'outcome' as const, description: 'Mercado', category: 'Mercado' };
+      await repository.create({
+        ...base,
+        amountCents: 10000,
+        date: `${addMonths(thisMonth, -1)}-10`,
+      });
+      await repository.create({ ...base, amountCents: 12000, date: `${thisMonth}-01` });
+    });
+    const summary = await screen.findByRole('region', { name: 'Resumo do mês' });
+    const previous = formatMonthLong(addMonths(thisMonth, -1)).split(' de ')[0] ?? '';
+
+    // Saídas subiram 20%: vermelho (para saídas, subir é ruim).
+    expect(await within(summary).findByText(`▲ 20% vs ${previous}`)).toBeInTheDocument();
   });
 });

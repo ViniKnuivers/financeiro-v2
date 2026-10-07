@@ -1,20 +1,27 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Outlet } from 'react-router';
 import { TransactionModalContext } from '../../contexts/transaction-modal-context';
 import type { Transaction } from '../../domain/transaction';
 import { useTransactions } from '../../hooks/useTransactions';
-import { DeleteDialog } from '../DeleteDialog';
 import { Header } from '../Header';
+import { Toast, type ToastMessage } from '../Toast';
 import { TransactionModal } from '../TransactionModal';
 
-/** Cabeçalho + página + os modais de nova/editar transação e de exclusão. */
+/** Cabeçalho + página + o formulário de nova/editar transação e o aviso de "Desfazer". */
 export function Layout() {
-  const { create, update, remove } = useTransactions();
+  const { create, update, remove, restore } = useTransactions();
   const [formOpen, setFormOpen] = useState(false);
   // Muda a cada abertura: o formulário é montado de novo, com os valores certos.
   const [formKey, setFormKey] = useState(0);
   const [editing, setEditing] = useState<Transaction | null>(null);
-  const [removing, setRemoving] = useState<Transaction | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  const showToast = useCallback((message: Omit<ToastMessage, 'id'>) => {
+    setToast((previous) => ({ ...message, id: (previous?.id ?? 0) + 1 }));
+  }, []);
+  const closeToast = useCallback(() => {
+    setToast(null);
+  }, []);
 
   const modal = useMemo(
     () => ({
@@ -28,11 +35,28 @@ export function Layout() {
         setFormKey((key) => key + 1);
         setFormOpen(true);
       },
-      confirmRemove: (transaction: Transaction) => {
-        setRemoving(transaction);
+      removeWithUndo: (transaction: Transaction) => {
+        remove(transaction.id).then(
+          () => {
+            showToast({
+              text: `${transaction.description} apagado`,
+              action: {
+                label: 'Desfazer',
+                onClick: () => {
+                  restore(transaction).catch(() => {
+                    showToast({ text: 'Não foi possível desfazer. Lance de novo.' });
+                  });
+                },
+              },
+            });
+          },
+          () => {
+            showToast({ text: 'Não foi possível apagar. Tente de novo.' });
+          },
+        );
       },
     }),
-    [],
+    [remove, restore, showToast],
   );
 
   return (
@@ -47,13 +71,7 @@ export function Layout() {
         editing={editing}
         onSubmit={(input) => (editing ? update(editing.id, input) : create(input))}
       />
-      <DeleteDialog
-        transaction={removing}
-        onOpenChange={(open) => {
-          if (!open) setRemoving(null);
-        }}
-        onConfirm={(transaction) => remove(transaction.id)}
-      />
+      <Toast message={toast} onClose={closeToast} />
     </TransactionModalContext>
   );
 }

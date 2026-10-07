@@ -5,6 +5,8 @@ import { useTransactionModal } from '../../hooks/useTransactionModal';
 import { useTransactions } from '../../hooks/useTransactions';
 import { formatDate, formatMonthLong } from '../../lib/dates';
 import { formatCents } from '../../lib/money';
+import { NO_FILTERS } from '../../domain/summary';
+import { Filters } from './components/Filters';
 import { SearchForm } from './components/SearchForm';
 import {
   ActionButton,
@@ -16,8 +18,8 @@ import {
 } from './styles';
 
 export function Transactions() {
-  const { visible, transactions, month, status, query } = useTransactions();
-  const { openCreate, openEdit, confirmRemove } = useTransactionModal();
+  const { visible, transactions, month, status, setFilters } = useTransactions();
+  const { openCreate, openEdit, removeWithUndo } = useTransactionModal();
 
   return (
     <>
@@ -28,6 +30,7 @@ export function Transactions() {
           <MonthPicker />
           <SearchForm />
         </Toolbar>
+        {transactions.length > 0 && <Filters />}
 
         {status === 'error' && (
           <EmptyState role="alert">
@@ -47,7 +50,15 @@ export function Transactions() {
 
         {status === 'ready' && transactions.length > 0 && visible.length === 0 && (
           <EmptyState>
-            <p>Nada encontrado para “{query}” neste mês.</p>
+            <p>Nenhuma transação com esses filtros neste mês.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setFilters(NO_FILTERS);
+              }}
+            >
+              Limpar filtros
+            </button>
           </EmptyState>
         )}
 
@@ -80,7 +91,7 @@ export function Transactions() {
                       $danger
                       aria-label={`Apagar ${transaction.description}`}
                       onClick={() => {
-                        confirmRemove(transaction);
+                        removeWithUndo(transaction);
                       }}
                     >
                       <TrashIcon size={20} />

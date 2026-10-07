@@ -64,3 +64,23 @@ export const SummaryCard = styled.div<SummaryCardProps>`
       }
     `}
 `;
+
+type Tone = 'good' | 'bad' | 'neutral';
+
+/** No cartão roxo, verde e vermelho escuros somem: usa tons claros. */
+const ON_PURPLE: Record<Tone, string> = { good: '#B9F6DA', bad: '#FFD0D5', neutral: '#E1E1E6' };
+
+export const Delta = styled.small<{ $tone: Tone; $onPurple?: boolean }>`
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: ${(props) => (props.$onPurple ? 500 : 400)};
+  color: ${(props) =>
+    props.$onPurple
+      ? ON_PURPLE[props.$tone]
+      : props.$tone === 'good'
+        ? props.theme['green-300']
+        : props.$tone === 'bad'
+          ? props.theme['red-300']
+          : props.theme['gray-400']};
+`;

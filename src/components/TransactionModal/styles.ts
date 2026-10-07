@@ -137,3 +137,29 @@ export const TransactionTypeButton = styled(RadioGroup.Item)<TransactionTypeButt
     }
   }
 `;
+
+export const DateRow = styled.div`
+  display: flex;
+  gap: 0.5rem;
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+`;
+
+/** "Hoje" / "Ontem": um toque em vez de abrir o calendário. */
+export const QuickDate = styled.button`
+  border: 0;
+  border-radius: 6px;
+  padding: 0 0.875rem;
+  background: ${(props) => props.theme['gray-700']};
+  color: ${(props) => props.theme['gray-300']};
+  font-weight: 500;
+  font-size: 0.875rem;
+
+  &[aria-pressed='true'] {
+    background: ${(props) => props.theme['purple-700']};
+    color: ${(props) => props.theme.white};
+  }
+`;

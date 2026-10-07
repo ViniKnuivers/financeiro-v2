@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useState } from 'react';
 import { AuthFailure } from '../../auth/auth-gateway';
 import { useAuth } from '../../hooks/useAuth';
-import { Content, Overlay } from '../DeleteDialog/styles';
+import { Content, Overlay } from '../ui/dialog';
 import { ErrorText, Field, SubmitButton } from '../TransactionModal/styles';
 
 const MIN_PASSWORD = 8;

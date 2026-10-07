@@ -4,7 +4,11 @@ import { SearchFormContainer } from './styles';
 
 /** Filtra enquanto você digita (descrição ou categoria), no mês da tela. */
 export function SearchForm() {
-  const { query, setQuery } = useTransactions();
+  const { filters, setFilters } = useTransactions();
+  const query = filters.query;
+  const setQuery = (value: string) => {
+    setFilters({ query: value });
+  };
 
   return (
     <SearchFormContainer

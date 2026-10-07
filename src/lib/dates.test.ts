@@ -1,4 +1,5 @@
 import {
+  addDays,
   addMonths,
   formatDate,
   formatMonthLong,
@@ -20,5 +21,7 @@ describe('datas', () => {
     expect(formatMonthLong('2026-10')).toBe('outubro de 2026');
     expect(formatMonthShort('2026-10')).toBe('out/26');
     expect(formatDate('2026-10-06')).toBe('06/10/2026');
+    expect(addDays('2026-10-01', -1)).toBe('2026-09-30');
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
   });
 });

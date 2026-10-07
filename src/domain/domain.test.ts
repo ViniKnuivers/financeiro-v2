@@ -1,4 +1,7 @@
 import {
+  changeFrom,
+  filterAndSort,
+  NO_FILTERS,
   fromFirstActiveMonth,
   matchesSearch,
   monthlyTotals,
@@ -62,6 +65,46 @@ describe('resumo', () => {
     expect(matchesSearch(tx({}), 'ALIMENT')).toBe(true);
     expect(matchesSearch(tx({}), 'uber')).toBe(false);
     expect(matchesSearch(tx({}), '  ')).toBe(true);
+  });
+});
+
+describe('filtros e comparação', () => {
+  const list = [
+    tx({ id: 'a', description: 'Almoço', amountCents: 3200, date: '2026-10-02' }),
+    tx({
+      id: 'b',
+      description: 'Mercado',
+      category: 'Mercado',
+      amountCents: 15000,
+      date: '2026-10-01',
+    }),
+    tx({
+      id: 'c',
+      type: 'income',
+      description: 'Salário',
+      category: 'Salário',
+      amountCents: 359600,
+      date: '2026-10-03',
+    }),
+  ];
+
+  it('tipo, categoria e ordem (data ou maior valor)', () => {
+    const ids = (filters: Partial<typeof NO_FILTERS>) =>
+      filterAndSort(list, { ...NO_FILTERS, ...filters }).map((t) => t.id);
+    expect(ids({})).toEqual(['c', 'a', 'b']);
+    expect(ids({ type: 'outcome' })).toEqual(['a', 'b']);
+    expect(ids({ type: 'outcome', sort: 'amount' })).toEqual(['b', 'a']);
+    expect(ids({ category: 'Mercado' })).toEqual(['b']);
+    expect(ids({ query: 'almo', type: 'income' })).toEqual([]);
+  });
+
+  it('variação contra o mês anterior, inclusive com saldo negativo', () => {
+    expect(changeFrom(10000, 12000)).toEqual({ kind: 'up', percent: 20 });
+    expect(changeFrom(10000, 9200)).toEqual({ kind: 'down', percent: 8 });
+    expect(changeFrom(-5000, 5000)).toEqual({ kind: 'up', percent: 200 });
+    expect(changeFrom(0, 5000)).toEqual({ kind: 'new' });
+    expect(changeFrom(5000, 5000)).toEqual({ kind: 'same' });
+    expect(changeFrom(100000, 100001)).toEqual({ kind: 'same' });
   });
 });
 

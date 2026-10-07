@@ -55,6 +55,12 @@ export class LocalTransactionsRepository implements TransactionsRepository {
     return Promise.resolve();
   }
 
+  restore(transaction: Transaction): Promise<void> {
+    const all = this.read();
+    if (!all.some((t) => t.id === transaction.id)) this.write([...all, transaction]);
+    return Promise.resolve();
+  }
+
   private read(): Transaction[] {
     try {
       const parsed: unknown = JSON.parse(this.storage.getItem(STORAGE_KEY) ?? '[]');
