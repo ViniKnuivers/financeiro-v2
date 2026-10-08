@@ -158,3 +158,39 @@ export const RecurringList = styled.ul`
     }
   }
 `;
+
+/** Os números do topo da janela "categoria mês a mês". */
+export const HistoryStats = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin: 1.25rem 0 1rem;
+
+  div {
+    background: ${(props) => props.theme['gray-700']};
+    border-radius: 6px;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  span {
+    font-size: 0.75rem;
+    color: ${(props) => props.theme['gray-400']};
+  }
+
+  strong {
+    font-size: 0.9375rem;
+    font-weight: 500;
+
+    &::first-letter {
+      text-transform: uppercase;
+    }
+  }
+
+  @media (max-width: 420px) {
+    grid-template-columns: 1fr;
+  }
+`;

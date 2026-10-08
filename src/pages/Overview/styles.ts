@@ -14,7 +14,10 @@ export const OverviewContainer = styled.main`
 
 export const Toolbar = styled.div`
   display: flex;
-  justify-content: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 
   ${MOBILE} {
     justify-content: center;
@@ -55,6 +58,12 @@ export const ChartCard = styled.section`
     padding: 3rem 0;
     text-align: center;
   }
+
+  .hint {
+    margin-top: 1rem;
+    font-size: 0.8125rem;
+    color: ${(props) => props.theme['gray-500']};
+  }
 `;
 
 export const CategoryList = styled.ul`
@@ -64,12 +73,24 @@ export const CategoryList = styled.ul`
   flex-direction: column;
   gap: 0.625rem;
 
-  li {
+  li button {
+    width: calc(100% + 0.75rem);
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    padding: 0.25rem 0.375rem;
+    margin: -0.25rem -0.375rem;
+    border-radius: 6px;
     display: grid;
     grid-template-columns: auto 1fr auto auto;
     align-items: center;
     gap: 0.75rem;
     font-size: 0.875rem;
+
+    &:hover {
+      background: ${(props) => props.theme['gray-600']};
+    }
   }
 
   .dot {
@@ -86,5 +107,26 @@ export const CategoryList = styled.ul`
     font-weight: 500;
     min-width: 6.5rem;
     text-align: right;
+  }
+`;
+
+/** "Mês | Ano" no topo do Resumo. */
+export const Tabs = styled.nav`
+  display: flex;
+  padding: 0.25rem;
+  border-radius: 6px;
+  background: ${(props) => props.theme['gray-700']};
+
+  a {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    color: ${(props) => props.theme['gray-400']};
+    text-decoration: none;
+    font-weight: 500;
+
+    &.active {
+      background: ${(props) => props.theme['purple-500']};
+      color: ${(props) => props.theme.white};
+    }
   }
 `;

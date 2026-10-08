@@ -6,6 +6,7 @@ import { AuthProvider } from './auth/AuthProvider';
 import { RequireAuth } from './auth/RequireAuth';
 import { Layout } from './components/Layout';
 import { NewPasswordDialog } from './components/NewPasswordDialog';
+import { PrivacyProvider } from './contexts/PrivacyProvider';
 import { TransactionsProvider } from './contexts/TransactionsProvider';
 import type { Repositories } from './data/repositories';
 import { useAuth } from './hooks/useAuth';
@@ -49,6 +50,12 @@ export function App({ repositories, auth }: Props) {
               path: 'resumo',
               lazy: async () => ({ Component: (await import('./pages/Overview')).Overview }),
             },
+            {
+              path: 'resumo/ano',
+              lazy: async () => ({
+                Component: (await import('./pages/YearOverview')).YearOverview,
+              }),
+            },
             { path: 'conta', element: <Account /> },
             { path: '*', element: <Navigate to="/" replace /> },
           ],
@@ -61,14 +68,16 @@ export function App({ repositories, auth }: Props) {
   return (
     <ThemeProvider theme={defaultTheme}>
       <GlobalStyle />
-      {auth ? (
-        <AuthProvider gateway={auth}>
-          {app}
-          <NewPasswordDialog />
-        </AuthProvider>
-      ) : (
-        app
-      )}
+      <PrivacyProvider>
+        {auth ? (
+          <AuthProvider gateway={auth}>
+            {app}
+            <NewPasswordDialog />
+          </AuthProvider>
+        ) : (
+          app
+        )}
+      </PrivacyProvider>
     </ThemeProvider>
   );
 }

@@ -291,4 +291,90 @@ describe('Financeiro', () => {
       expect(screen.queryByText('Spotify')).not.toBeInTheDocument();
     });
   });
+  it('modo privacidade esconde os valores e lembra a escolha', async () => {
+    window.localStorage.removeItem('financeiro:privacy');
+    const { user } = await setup(async (repo) => {
+      await repo.create({
+        type: 'outcome',
+        description: 'Cinema',
+        category: 'Lazer',
+        amountCents: 4800,
+        date: today(),
+      });
+    });
+    const [cinema] = await screen.findAllByText('Cinema', { selector: 'td' });
+    const row = cinema?.closest('tr');
+    expect(row).toHaveTextContent(money('R$ 48,00'));
+
+    const eye = screen.getByRole('button', { name: 'Esconder valores' });
+    await user.click(eye);
+    expect(eye).toHaveAttribute('aria-pressed', 'true');
+    expect(row).toHaveTextContent('R$ •••••');
+    expect(row).not.toHaveTextContent(money('R$ 48,00'));
+    const summary = screen.getByRole('region', { name: 'Resumo do mês' });
+    expect(summary).not.toHaveTextContent(money('R$ 48,00'));
+    expect(window.localStorage.getItem('financeiro:privacy')).toBe('hidden');
+
+    await user.click(eye);
+    expect(row).toHaveTextContent(money('R$ 48,00'));
+    expect(window.localStorage.getItem('financeiro:privacy')).toBeNull();
+  });
+
+  it('Resumo: tocar numa categoria mostra a média e o maior mês', async () => {
+    const thisMonth = today().slice(0, 7);
+    const { user } = await setup(async (repo) => {
+      for (const [months, cents] of [
+        [-2, 6000],
+        [-1, 12000],
+        [0, 3000],
+      ] as const) {
+        await repo.create({
+          type: 'outcome',
+          description: 'iFood',
+          category: 'Alimentação',
+          amountCents: cents,
+          date: `${addMonths(thisMonth, months)}-01`,
+        });
+      }
+    });
+    await user.click(await screen.findByRole('link', { name: 'Resumo' }));
+    await user.click(await screen.findByRole('button', { name: /Alimentação/ }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Alimentação mês a mês' });
+    expect(await within(dialog).findByText(money('R$ 70,00'))).toBeInTheDocument();
+    const peakMonth = formatMonthLong(addMonths(thisMonth, -1)).split(' de ')[0] ?? '';
+    expect(within(dialog).getByText(money(`${peakMonth} · R$ 120,00`))).toBeInTheDocument();
+  });
+
+  it('Resumo do ano: totais, média e maior gasto', async () => {
+    const thisMonth = today().slice(0, 7);
+    const { user } = await setup(async (repo) => {
+      await repo.create({
+        type: 'income',
+        description: 'Salário',
+        category: 'Salário',
+        amountCents: 300000,
+        date: `${thisMonth}-01`,
+      });
+      await repo.create({
+        type: 'outcome',
+        description: 'Geladeira',
+        category: 'Compras',
+        amountCents: 250000,
+        date: `${thisMonth}-01`,
+      });
+    });
+    await user.click(await screen.findByRole('link', { name: 'Resumo' }));
+    await user.click(await screen.findByRole('link', { name: 'Ano' }));
+
+    const cards = await screen.findByRole('region', { name: 'Resumo do ano' });
+    expect(
+      await within(cards).findByText(money('R$ 3.000,00'), { selector: 'strong' }),
+    ).toBeInTheDocument();
+    expect(within(cards).getByText(money('R$ 500,00'), { selector: 'strong' })).toBeInTheDocument();
+    const highlights = screen.getByRole('list', { name: 'Destaques do ano' });
+    expect(within(highlights).getByText('Geladeira')).toBeInTheDocument();
+    expect(within(highlights).getByText(money('R$ 2.500,00 ·'))).toBeInTheDocument();
+    expect(within(highlights).getByText('100% das saídas')).toBeInTheDocument();
+  });
 });

@@ -138,3 +138,111 @@ export function changeFrom(previous: number, current: number): Change {
   if (percent === 0) return { kind: 'same' };
   return { kind: current > previous ? 'up' : 'down', percent };
 }
+
+export interface CategoryMonth {
+  month: string;
+  cents: number;
+}
+
+/**
+ * Quanto foi numa categoria em cada um dos `count` meses até `lastMonth`, a partir do
+ * primeiro mês em que ela aparece (sem uma fila de zeros no começo).
+ */
+export function categoryByMonth(
+  transactions: readonly Transaction[],
+  type: TransactionType,
+  category: string,
+  lastMonth: string,
+  count: number,
+): CategoryMonth[] {
+  const months = Array.from({ length: count }, (_, i) => addMonths(lastMonth, i - count + 1));
+  const totals = new Map<string, number>();
+  for (const t of transactions) {
+    if (t.type !== type || t.category !== category) continue;
+    const month = monthOf(t.date);
+    totals.set(month, (totals.get(month) ?? 0) + t.amountCents);
+  }
+  const all = months.map((month) => ({ month, cents: totals.get(month) ?? 0 }));
+  const first = all.findIndex((m) => m.cents > 0);
+  return all.slice(first === -1 ? all.length - 1 : first);
+}
+
+export interface CategoryStats {
+  /** Média por mês, contando os meses sem gasto depois do primeiro. */
+  averageCents: number;
+  /** O mês de maior gasto; null se nunca teve. */
+  peak: CategoryMonth | null;
+}
+
+export function categoryStats(months: readonly CategoryMonth[]): CategoryStats {
+  const total = months.reduce((sum, m) => sum + m.cents, 0);
+  const peak = months.reduce<CategoryMonth | null>(
+    (best, m) => (m.cents > 0 && (!best || m.cents > best.cents) ? m : best),
+    null,
+  );
+  return {
+    averageCents: months.length > 0 ? Math.round(total / months.length) : 0,
+    peak,
+  };
+}
+
+export interface YearSummary extends Summary {
+  /** Os 12 meses do ano, de janeiro a dezembro (os futuros mostram o que já está lançado). */
+  months: MonthTotals[];
+  /** Meses que entram na média: do primeiro com lançamento até o mês atual (ou dezembro). */
+  activeMonths: number;
+  averageIncomeCents: number;
+  averageOutcomeCents: number;
+  /** O mês com mais saídas. */
+  priciestMonth: MonthTotals | null;
+  /** O mês com o maior saldo. */
+  bestMonth: MonthTotals | null;
+  categories: CategoryTotal[];
+  /** A maior saída do ano. */
+  biggestOutcome: Transaction | null;
+}
+
+/**
+ * O ano em números, até `currentMonth` ("YYYY-MM"): parcelas e fixos de meses que ainda
+ * não chegaram aparecem no gráfico, mas não entram nos totais nem nas médias.
+ */
+export function yearSummary(
+  transactions: readonly Transaction[],
+  year: number,
+  currentMonth: string,
+): YearSummary {
+  const inYear = transactions.filter((t) => t.date.startsWith(`${String(year)}-`));
+  const counted = inYear.filter((t) => monthOf(t.date) <= currentMonth);
+  const months = monthlyTotals(inYear, `${String(year)}-12`, 12);
+  const past = months.filter(
+    (m) => m.month <= currentMonth && (m.incomeCents > 0 || m.outcomeCents > 0),
+  );
+  const first = past[0];
+  const last = currentMonth < `${String(year)}-12` ? currentMonth : `${String(year)}-12`;
+  const activeMonths = first
+    ? months.filter((m) => m.month >= first.month && m.month <= last).length
+    : 0;
+  const totals = summarize(counted);
+  const pick = (score: (m: MonthTotals) => number) =>
+    past.reduce<MonthTotals | null>(
+      (best, m) => (!best || score(m) > score(best) ? m : best),
+      null,
+    );
+
+  return {
+    ...totals,
+    months,
+    activeMonths,
+    averageIncomeCents: activeMonths > 0 ? Math.round(totals.incomeCents / activeMonths) : 0,
+    averageOutcomeCents: activeMonths > 0 ? Math.round(totals.outcomeCents / activeMonths) : 0,
+    priciestMonth: past.some((m) => m.outcomeCents > 0) ? pick((m) => m.outcomeCents) : null,
+    bestMonth: pick((m) => m.balanceCents),
+    categories: outcomeByCategory(counted),
+    biggestOutcome: counted
+      .filter((t) => t.type === 'outcome')
+      .reduce<Transaction | null>(
+        (best, t) => (!best || t.amountCents > best.amountCents ? t : best),
+        null,
+      ),
+  };
+}

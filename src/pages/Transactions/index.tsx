@@ -4,7 +4,7 @@ import { Summary } from '../../components/Summary';
 import { useTransactionModal } from '../../hooks/useTransactionModal';
 import { useTransactions } from '../../hooks/useTransactions';
 import { formatDate, formatMonthLong } from '../../lib/dates';
-import { formatCents } from '../../lib/money';
+import { useMoney } from '../../hooks/usePrivacy';
 import { NO_FILTERS } from '../../domain/summary';
 import { Filters } from './components/Filters';
 import { SearchForm } from './components/SearchForm';
@@ -21,6 +21,7 @@ import {
 export function Transactions() {
   const { visible, transactions, month, status, setFilters } = useTransactions();
   const { openCreate, openEdit, removeWithUndo } = useTransactionModal();
+  const formatCents = useMoney();
 
   return (
     <>

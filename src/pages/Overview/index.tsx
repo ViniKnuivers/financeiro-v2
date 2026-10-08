@@ -22,8 +22,10 @@ import {
 } from '../../domain/summary';
 import { useTransactions } from '../../hooks/useTransactions';
 import { addMonths, formatMonthLong, formatMonthShort, monthRange } from '../../lib/dates';
-import { formatCents } from '../../lib/money';
+import { useMoney, usePrivacy } from '../../hooks/usePrivacy';
 import { BudgetPanel } from './components/BudgetPanel';
+import { CategoryHistory } from './components/CategoryHistory';
+import { PeriodTabs } from './components/PeriodTabs';
 import { RecurringPanel } from './components/RecurringPanel';
 import { CategoryList, ChartCard, ChartsGrid, OverviewContainer, Toolbar } from './styles';
 
@@ -49,6 +51,10 @@ export function Overview() {
   const repository = repositories.transactions;
   const theme = useTheme();
   const [history, setHistory] = useState<MonthTotals[]>([]);
+  // Categoria aberta na janela de evolução.
+  const [opened, setOpened] = useState<string | null>(null);
+  const formatCents = useMoney();
+  const { hidden } = usePrivacy();
 
   // Os 6 meses até o mês da tela. Recarrega quando o mês muda ou algo é lançado/editado.
   useEffect(() => {
@@ -90,6 +96,7 @@ export function Overview() {
       <Summary />
       <OverviewContainer>
         <Toolbar>
+          <PeriodTabs />
           <MonthPicker />
         </Toolbar>
 
@@ -116,13 +123,22 @@ export function Overview() {
                 <CategoryList>
                   {categories.map((c) => (
                     <li key={c.category}>
-                      <span className="dot" style={{ background: c.fill }} />
-                      <span className="name">{c.category}</span>
-                      <span className="percent">{c.percent}%</span>
-                      <strong>{formatCents(c.cents)}</strong>
+                      <button
+                        type="button"
+                        title="Ver mês a mês"
+                        onClick={() => {
+                          setOpened(c.category);
+                        }}
+                      >
+                        <span className="dot" style={{ background: c.fill }} />
+                        <span className="name">{c.category}</span>
+                        <span className="percent">{c.percent}%</span>
+                        <strong>{formatCents(c.cents)}</strong>
+                      </button>
                     </li>
                   ))}
                 </CategoryList>
+                <p className="hint">Toque numa categoria para ver mês a mês.</p>
               </>
             )}
           </ChartCard>
@@ -139,7 +155,9 @@ export function Overview() {
                   tickLine={false}
                 />
                 <YAxis
-                  tickFormatter={(value: number) => formatCents(value).replace(/,00$/, '')}
+                  tickFormatter={(value: number) =>
+                    hidden ? '' : formatCents(value).replace(/,00$/, '')
+                  }
                   stroke={theme['gray-400']}
                   tickLine={false}
                   axisLine={false}
@@ -180,6 +198,15 @@ export function Overview() {
           </ChartCard>
         </ChartsGrid>
       </OverviewContainer>
+
+      {opened && (
+        <CategoryHistory
+          category={opened}
+          onClose={() => {
+            setOpened(null);
+          }}
+        />
+      )}
     </>
   );
 }

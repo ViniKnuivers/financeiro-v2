@@ -1,7 +1,14 @@
-import { PlusIcon, SignOutIcon, UserCircleIcon } from '@phosphor-icons/react';
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  PlusIcon,
+  SignOutIcon,
+  UserCircleIcon,
+} from '@phosphor-icons/react';
 import { Link, NavLink } from 'react-router';
 import logo from '../../assets/logo.svg';
 import { useAuth } from '../../hooks/useAuth';
+import { usePrivacy } from '../../hooks/usePrivacy';
 import { useTransactionModal } from '../../hooks/useTransactionModal';
 import {
   HeaderContainer,
@@ -15,6 +22,7 @@ import {
 export function Header() {
   const { openCreate } = useTransactionModal();
   const auth = useAuth();
+  const privacy = usePrivacy();
 
   return (
     <HeaderContainer>
@@ -36,6 +44,15 @@ export function Header() {
           <span>Nova transação</span>
         </NewTransactionButton>
 
+        <SignOutButton
+          type="button"
+          aria-label="Esconder valores"
+          aria-pressed={privacy.hidden}
+          title={privacy.hidden ? 'Mostrar valores' : 'Esconder valores'}
+          onClick={privacy.toggle}
+        >
+          {privacy.hidden ? <EyeSlashIcon size={24} /> : <EyeIcon size={24} />}
+        </SignOutButton>
         {auth?.user && (
           <SignOutButton as={Link} to="/conta" aria-label="Minha conta" title="Minha conta">
             <UserCircleIcon size={24} />

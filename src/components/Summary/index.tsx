@@ -3,7 +3,7 @@ import { useTheme } from 'styled-components';
 import { changeFrom, type Summary as MonthSummary } from '../../domain/summary';
 import { useTransactions } from '../../hooks/useTransactions';
 import { addMonths, formatMonthLong } from '../../lib/dates';
-import { formatCents } from '../../lib/money';
+import { useMoney } from '../../hooks/usePrivacy';
 import { Accumulated, Delta, SummaryCard, SummaryContainer } from './styles';
 
 type Key = keyof MonthSummary;
@@ -12,6 +12,7 @@ export function Summary() {
   const { summary, previousSummary, previousHasData, accumulatedCents, status, month } =
     useTransactions();
   const theme = useTheme();
+  const formatCents = useMoney();
   const loading = status === 'loading';
   const value = (cents: number) => (loading ? '…' : formatCents(cents));
   const previousName = formatMonthLong(addMonths(month, -1)).split(' de ')[0] ?? '';

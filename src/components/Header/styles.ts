@@ -96,10 +96,22 @@ export const NewTransactionButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  white-space: nowrap;
   transition: background-color 0.2s;
 
   &:hover {
     background: ${(props) => props.theme['purple-700']};
+  }
+
+  /* Tablet: com o olho, a conta e o sair, só o "+" cabe. */
+  @media (max-width: 900px) {
+    width: 50px;
+    padding: 0;
+    justify-content: center;
+
+    span {
+      display: none;
+    }
   }
 
   /* No celular, só o "+" ao lado do logo. */

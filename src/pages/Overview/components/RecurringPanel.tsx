@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Recurring } from '../../../domain/recurring';
 import { useTransactions } from '../../../hooks/useTransactions';
-import { formatCents } from '../../../lib/money';
+import { useMoney } from '../../../hooks/usePrivacy';
 import { PanelHeader, RecurringList } from './styles';
 
 /** Gastos fixos ativos, com o total por mês e "Parar de repetir". */
 export function RecurringPanel() {
   const { repositories, transactions, refresh } = useTransactions();
   const [list, setList] = useState<Recurring[] | null>(null);
+  const formatCents = useMoney();
   // Confirmação em dois toques: o primeiro mostra "Parar?".
   const [confirming, setConfirming] = useState<string | null>(null);
 

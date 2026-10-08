@@ -6,7 +6,8 @@ import { budgetStatus, type Budget } from '../../../domain/budget';
 import { outcomeByCategory } from '../../../domain/summary';
 import { CATEGORIES } from '../../../domain/transaction';
 import { useTransactions } from '../../../hooks/useTransactions';
-import { centsToInput, formatCents, parseAmountToCents } from '../../../lib/money';
+import { useMoney } from '../../../hooks/usePrivacy';
+import { centsToInput, parseAmountToCents } from '../../../lib/money';
 import { BudgetRow, LimitsForm, PanelHeader } from './styles';
 
 /** Orçamento do mês: uma barra por categoria com limite. */
@@ -14,6 +15,7 @@ export function BudgetPanel() {
   const { transactions, repositories } = useTransactions();
   const [budgets, setBudgets] = useState<Budget[] | null>(null);
   const [editing, setEditing] = useState(false);
+  const formatCents = useMoney();
 
   const load = useCallback(() => {
     repositories.budgets.list().then(setBudgets, () => {
